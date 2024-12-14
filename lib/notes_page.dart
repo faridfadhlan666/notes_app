@@ -165,34 +165,59 @@ class _NotesPageState extends State<NotesPage> {
     // Set the textController to the note content
     textController.text = note.content;
 
+    bool isFavorite = note.isFavorite; // Menyimpan status favorit saat ini
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Note'),
-        content: TextField(
-          controller: textController,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Update the note in the database
-              note.content = textController.text;
-              _notesDatabase.updateNote(note);
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Edit Note'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: textController,
+                decoration: const InputDecoration(hintText: 'Note content'),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Checkbox(
+                    value: isFavorite,
+                    onChanged: (value) {
+                      setState(() {
+                        isFavorite = value ?? false;
+                      });
+                    },
+                  ),
+                  const Text('Mark as Favorite'),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Update the note content and favorite status
+                note.content = textController.text;
+                note.isFavorite = isFavorite;
+                _notesDatabase.updateNote(note);
 
-              // Close the dialog
-              Navigator.pop(context);
-              textController.clear();
-            },
-            child: const Text('Save'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              textController.clear();
-            },
-            child: const Text('Cancel'),
-          ),
-        ],
+                // Close the dialog
+                Navigator.pop(context);
+                textController.clear();
+              },
+              child: const Text('Save'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                textController.clear();
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -202,17 +227,44 @@ class _NotesPageState extends State<NotesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Note'),
+        content: Text(
+            'Are you sure you want to delete this note?\n\"${note.content}\"'),
         actions: [
           TextButton(
             onPressed: () {
-              // Delete the note from the database
-              _notesDatabase.deleteNote(note.id!);
-              Navigator.pop(context);
+              Navigator.pop(context); // Close the first confirmation dialog
+
+              // Show second confirmation dialog
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Confirm Deletion'),
+                  content: const Text(
+                      'This action cannot be undone. Are you absolutely sure?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        // Delete the note from the database
+                        _notesDatabase.deleteNote(note.id!);
+                        Navigator.pop(
+                            context); // Close the second confirmation dialog
+                      },
+                      child: const Text('Yes, Delete'),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.pop(context), // Cancel second confirmation
+                      child: const Text('Cancel'),
+                    ),
+                  ],
+                ),
+              );
             },
             child: const Text('Yes'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () =>
+                Navigator.pop(context), // Cancel first confirmation
             child: const Text('Cancel'),
           ),
         ],
